@@ -101,30 +101,48 @@ class CephAgent(object):
         self.http_server.register_sync_uri(self.ECHO_PATH, self.echo)
 
     def _set_capacity_to_response(self, rsp):
-        o = shell.call('ceph df -f json')
-        df = jsonobject.loads(o)
+        #o = shell.call('ceph df -f json')
+        #df = jsonobject.loads(o)
 
-        if df.stats.total_bytes__:
-            total = long(df.stats.total_bytes_)
-        elif df.stats.total_space__:
-            total = long(df.stats.total_space__) * 1024
-        else:
-            raise Exception('unknown ceph df output: %s' % o)
+        #if df.stats.total_bytes__:
+            #total = long(df.stats.total_bytes_)
+        #elif df.stats.total_space__:
+            #total = long(df.stats.total_space__) * 1024
+        #else:
+            #raise Exception('unknown ceph df output: %s' % o)
 
-        if df.stats.total_avail_bytes__:
-            avail = long(df.stats.total_avail_bytes_)
-        elif df.stats.total_avail__:
-            avail = long(df.stats.total_avail_) * 1024
-        else:
-            raise Exception('unknown ceph df output: %s' % o)
+        #if df.stats.total_avail_bytes__:
+            #avail = long(df.stats.total_avail_bytes_)
+        #elif df.stats.total_avail__:
+            #avail = long(df.stats.total_avail_) * 1024
+        #else:
+            #raise Exception('unknown ceph df output: %s' % o)
+
+        total = 1024*1024*1024*1024
+        used = 1024*1024
+
+        o = shell.call('lich.cluster --stat')
+        for l in o:
+            if l.startswith("used:"):
+                used = long(l.strip("used:").strip())
+
+            if l.startswith("capacity:"):
+                total = long(l.strip("capacity:").strip())
+
+        logger.debug("zz2 total: %s, used: %s" % (total, used))
 
         rsp.totalCapacity = total
-        rsp.availableCapacity = avail
+        rsp.availableCapacity = total - used
 
     def _get_file_size(self, path):
-        o = shell.call('rbd --format json info %s' % path)
-        o = jsonobject.loads(o)
-        return long(o.size_)
+        lichbd_file = os.path.join("/lichbd", path)
+        size = shell.call("/opt/mds/lich/libexec/lich --stat %s|grep Size|awk '{print $2}'" % (lichbd_file))
+        size = size.strip()
+        return long(size)
+
+        #o = shell.call('rbd --format json info %s' % path)
+        #o = jsonobject.loads(o)
+        #return long(o.size_)
 
     @replyerror
     def delete_pool(self, req):
@@ -156,25 +174,41 @@ class CephAgent(object):
         self._set_capacity_to_response(rsp)
         return jsonobject.dumps(rsp)
 
+    def spath2src_normal(self, spath):
+        #ceph://bak-t-95036217321343c2a8d64d32e085211e/382b3757a54045e5b7dbcfcdcfb07200@382b3757a54045e5b7dbcfcdcfb07200"
+        image_name, sp_name = spath.split('@')
+        return os.path.join("/lichbd", image_name)
+
+    def spath2normal(self, spath):
+        image_name, sp_name = spath.split('@')
+        return os.path.join("/lichbd", image_name.split("/")[0], "snap_" + sp_name)
+        
     @replyerror
     def create_snapshot(self, req):
         cmd = jsonobject.loads(req[http.REQUEST_BODY])
         spath = self._normalize_install_path(cmd.snapshotPath)
 
-        do_create = True
-        if cmd.skipOnExisting:
-            image_name, sp_name = spath.split('@')
-            o = shell.call('rbd --format json snap ls %s' % image_name)
-            o = jsonobject.loads(o)
-            for s in o:
-                if s.name_ == sp_name:
-                    do_create = False
+        logger.debug("zz2, spath: %s, cmd: %s\n" % (spath, cmd))
 
-        if do_create:
-            shell.call('rbd snap create %s' % spath)
+        src_path = self.spath2src_normal(spath)
+        dst_path = self.spath2normal(spath)
+
+        shell.call('/opt/mds/lich/libexec/lich --copy %s %s' % (src_path, dst_path))
+
+        #do_create = True
+        #if cmd.skipOnExisting:
+            #image_name, sp_name = spath.split('@')
+            #o = shell.call('rbd --format json snap ls %s' % image_name)
+            #o = jsonobject.loads(o)
+            #for s in o:
+                #if s.name_ == sp_name:
+                    #do_create = False
+
+        #if do_create:
+            #shell.call('rbd snap create %s' % spath)
 
         rsp = CreateSnapshotRsp()
-        rsp.size = self._get_file_size(spath)
+        rsp.size = self._get_file_size(src_path)
         self._set_capacity_to_response(rsp)
         return jsonobject.dumps(rsp)
 
@@ -215,7 +249,21 @@ class CephAgent(object):
         src_path = self._normalize_install_path(cmd.srcPath)
         dst_path = self._normalize_install_path(cmd.dstPath)
 
-        shell.call('rbd clone %s %s' % (src_path, dst_path))
+        ##rbd clone bak-t-95036217321343c2a8d64d32e085211e/382b3757a54045e5b7dbcfcdcfb07200@382b3757a54045e5b7dbcfcdcfb07200 pri-v-r-2a3fbde17e87421d81269046594c34fc/335e4182706d4883b704b45dd902a673
+        #shell.call('rbd clone %s %s' % (src_path, dst_path))
+
+        #todo set snap to null
+
+        src_path = self.spath2normal(src_path)
+        dst_path = os.path.join("/lichbd", dst_path)
+
+        try:
+            shell.call('/opt/mds/lich/libexec/lich --mkdir %s' % (os.path.dirname(dst_path)))
+        except Exception, e:
+            logger.debug("zz2 err: %s" % e)
+            pass
+
+        shell.call('/opt/mds/lich/libexec/lich --copy %s %s' % (src_path, dst_path))
 
         rsp = AgentResponse()
         self._set_capacity_to_response(rsp)
@@ -241,23 +289,34 @@ class CephAgent(object):
     def init(self, req):
         cmd = jsonobject.loads(req[http.REQUEST_BODY])
 
-        o = shell.call('ceph mon_status')
-        mon_status = jsonobject.loads(o)
-        fsid = mon_status.monmap.fsid_
+        logger.debug("zz2 cmd: %s" % (cmd))
 
-        existing_pools = shell.call('ceph osd lspools')
-        for pool in cmd.pools:
-            if pool.predefined and pool.name not in existing_pools:
-                raise Exception('cannot find pool[%s] in the ceph cluster, you must create it manually' % pool.name)
-            elif pool.name not in existing_pools:
-                shell.call('ceph osd pool create %s 100' % pool.name)
+        """
+        [root@node69 ~]# ceph -f json auth get-or-create client.zstack mon 'allow r' osd 'allow *' --conf /opt/ceph/ceph.conf 
 
-        o = shell.call("ceph -f json auth get-or-create client.zstack mon 'allow r' osd 'allow *' 2>/dev/null").strip(' \n\r\t')
-        o = jsonobject.loads(o)
+        [{"entity":"client.zstack","key":"AQDVyu9VXrozIhAAuT2yMARKBndq9g3W8KUQvw==","caps":{}}]You have new mail in /var/spool/mail/root
+        [root@node69 ~]# ceph mon_status --conf /opt/ceph/ceph.conf 
+        {"name":"0","rank":0,"state":"leader","election_epoch":2,"quorum":[0],"outside_quorum":[],"extra_probe_peers":[],"sync_provider":[],"monmap":{"epoch":1,"fsid":"96a91e6d-892a-41f4-8fd2-4a18c9002425","modified":"0.000000","created":"0.000000","mons":[{"rank":0,"name":"0","addr":"127.0.0.1:6789\/0"}]}}
+        [root@node69 ~]# 
+        """
+
+        #o = shell.call('ceph mon_status')
+        #mon_status = jsonobject.loads(o)
+        #fsid = mon_status.monmap.fsid_
+
+        #existing_pools = shell.call('ceph osd lspools')
+        #for pool in cmd.pools:
+            #if pool.predefined and pool.name not in existing_pools:
+                #raise Exception('cannot find pool[%s] in the ceph cluster, you must create it manually' % pool.name)
+            #elif pool.name not in existing_pools:
+                #shell.call('ceph osd pool create %s 100' % pool.name)
+
+        #o = shell.call("ceph -f json auth get-or-create client.zstack mon 'allow r' osd 'allow *' 2>/dev/null").strip(' \n\r\t')
+        #o = jsonobject.loads(o)
 
         rsp = InitRsp()
-        rsp.fsid = fsid
-        rsp.userKey = o[0].key_
+        rsp.fsid = "96a91e6d-892a-41f4-8fd2-4a18c9002425"
+        rsp.userKey = "AQDVyu9VXrozIhAAuT2yMARKBndq9g3W8KUQvw=="
         self._set_capacity_to_response(rsp)
 
         return jsonobject.dumps(rsp)
@@ -274,7 +333,9 @@ class CephAgent(object):
 
         path = self._normalize_install_path(cmd.installPath)
         size_M = sizeunit.Byte.toMegaByte(cmd.size) + 1
-        shell.call('rbd create --size %s --image-format 2 %s' % (size_M, path))
+
+        shell.call('qemu-img create -f raw lichbd:%s --size %s' % (path, size_M))
+        #shell.call('rbd create --size %s --image-format 2 %s' % (size_M, path))
 
         rsp = AgentResponse()
         self._set_capacity_to_response(rsp)
@@ -363,12 +424,14 @@ class CephAgent(object):
         cmd = jsonobject.loads(req[http.REQUEST_BODY])
         path = self._normalize_install_path(cmd.installPath)
 
-        o = shell.call('rbd snap ls --format json %s' % path)
-        o = jsonobject.loads(o)
-        if len(o) > 0:
-            raise Exception('unable to delete %s; the volume still has snapshots' % cmd.installPath)
+        path = os.path.join("/lichbd", path)
+        shell.call('/opt/mds/lich/libexec/lich --unlink %s' % path)
+        #o = shell.call('rbd snap ls --format json %s' % path)
+        #o = jsonobject.loads(o)
+        #if len(o) > 0:
+            #raise Exception('unable to delete %s; the volume still has snapshots' % cmd.installPath)
 
-        shell.call('rbd rm %s' % path)
+        #shell.call('rbd rm %s' % path)
 
         rsp = AgentResponse()
         self._set_capacity_to_response(rsp)
@@ -380,6 +443,7 @@ class CephDaemon(daemon.Daemon):
         super(CephDaemon, self).__init__(pidfile)
 
     def run(self):
+        logger.debug("zz2 start ceph...")
         self.agent = CephAgent()
         self.agent.http_server.start()
 

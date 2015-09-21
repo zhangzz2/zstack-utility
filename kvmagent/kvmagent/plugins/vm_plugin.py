@@ -263,13 +263,21 @@ class VirtioCeph(object):
         self.dev_letter = None
 
     def to_xmlobject(self):
+        logger.debug("zz2: %s", dir(self.volume))
+        for i in dir(self.volume):
+            logger.debug("zz2: %s: %s" %(i, getattr(self.volume, i)))
+
         disk = etree.Element('disk', {'type':'network', 'device':'disk'})
-        source = e(disk, 'source', None, {'name': self.volume.installPath.lstrip('ceph:').lstrip('//'), 'protocol':'rbd'})
-        auth = e(disk, 'auth', attrib={'username': 'zstack'})
-        e(auth, 'secret', attrib={'type':'ceph', 'uuid': self.volume.secretUuid})
-        for minfo in self.volume.monInfo:
-            e(source, 'host', None, {'name': minfo.hostname, 'port':str(minfo.port)})
+        source = e(disk, 'source', None, {'name': self.volume.installPath.lstrip('ceph:').lstrip('//'), 'protocol':'lichbd'})
         e(disk, 'target', None, {'dev':'vd%s' % self.dev_letter, 'bus':'virtio'})
+        e(disk, 'driver', None, {'cache':'none', 'name':'qemu', 'type':'raw'})
+
+        #source = e(disk, 'source', None, {'name': self.volume.installPath.lstrip('ceph:').lstrip('//'), 'protocol':'rbd'})
+        #auth = e(disk, 'auth', attrib={'username': 'zstack'})
+        #e(auth, 'secret', attrib={'type':'ceph', 'uuid': self.volume.secretUuid})
+        #for minfo in self.volume.monInfo:
+            #e(source, 'host', None, {'name': minfo.hostname, 'port':str(minfo.port)})
+        #e(disk, 'target', None, {'dev':'vd%s' % self.dev_letter, 'bus':'virtio'})
         return disk
 
 class VirtioIscsi(object):
@@ -1142,9 +1150,28 @@ class Vm(object):
         def make_os():
             root = elements['root']
             os = e(root, 'os')
-            e(os, 'type', 'hvm')
+            #e(os, 'type', 'hvm', {'arch':'x86_64', 'machine':'pc'})
+            e(os, 'type', 'hvm', {'machine':'pc'})
             e(os, 'boot', None, {'dev':cmd.bootDev})
-        
+ 
+        def make_commandline():
+            volumes = [cmd.rootVolume]
+            volumes.extend(cmd.dataVolumes)
+
+            root = elements['root']
+            commandline = e(root, 'qemu:commandline')
+            #e(os, 'type', 'hvm', {'arch':'x86_64', 'machine':'pc'})
+            for i in range(len(volumes)):
+                e(commandline, 'qemu:arg', None, {'value': '-set'})
+                e(commandline, 'qemu:arg', None, {'value': 'device.virtio-disk%d.scsi=off' % (i)})
+
+                e(commandline, 'qemu:arg', None, {'value': '-set'})
+                e(commandline, 'qemu:arg', None, {'value': 'device.virtio-disk%d.config-wce=off' % (i)})
+
+                e(commandline, 'qemu:arg', None, {'value': '-set'})
+                e(commandline, 'qemu:arg', None, {'value': 'device.virtio-disk%d.x-data-plane=on' %(i)})
+
+
         def make_features():
             root = elements['root']
             features = e(root, 'features')
@@ -1329,6 +1356,7 @@ class Vm(object):
         make_cdrom()
         make_vnc()
         make_addons()
+        make_commandline()
         
         root = elements['root']
         xml = etree.tostring(root)
