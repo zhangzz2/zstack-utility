@@ -4,6 +4,7 @@ import zstacklib.utils.daemon as daemon
 import zstacklib.utils.http as http
 import zstacklib.utils.log as log
 import zstacklib.utils.shell as shell
+import zstacklib.utils.lichbd as lichbd
 import zstacklib.utils.iptables as iptables
 import zstacklib.utils.jsonobject as jsonobject
 import zstacklib.utils.lock as lock
@@ -101,33 +102,15 @@ class CephAgent(object):
         self.http_server.register_sync_uri(self.ECHO_PATH, self.echo)
 
     def _set_capacity_to_response(self, rsp):
-        #o = shell.call('ceph df -f json')
-        #df = jsonobject.loads(o)
-
-        #if df.stats.total_bytes__:
-            #total = long(df.stats.total_bytes_)
-        #elif df.stats.total_space__:
-            #total = long(df.stats.total_space__) * 1024
-        #else:
-            #raise Exception('unknown ceph df output: %s' % o)
-
-        #if df.stats.total_avail_bytes__:
-            #avail = long(df.stats.total_avail_bytes_)
-        #elif df.stats.total_avail__:
-            #avail = long(df.stats.total_avail_) * 1024
-        #else:
-            #raise Exception('unknown ceph df output: %s' % o)
-
         total = 1024*1024*1024*1024
         used = 1024*1024
 
-        o = shell.call('lich.cluster --stat')
-        for l in o:
-            if l.startswith("used:"):
-                used = long(l.strip("used:").strip())
-
-            if l.startswith("capacity:"):
-                total = long(l.strip("capacity:").strip())
+        o = lichbd.lichbd_cluster_stat()
+        for l in o.split('\n'):
+            if 'used:' in l:
+                used = long(l.split("used:")[-1])
+            if 'capacity:' in l:
+                total = long(l.split("capacity:")[-1])
 
         logger.debug("zz2 total: %s, used: %s" % (total, used))
 
@@ -136,13 +119,7 @@ class CephAgent(object):
 
     def _get_file_size(self, path):
         lichbd_file = os.path.join("/lichbd", path)
-        size = shell.call("/opt/mds/lich/libexec/lich --stat %s|grep Size|awk '{print $2}'" % (lichbd_file))
-        size = size.strip()
-        return long(size)
-
-        #o = shell.call('rbd --format json info %s' % path)
-        #o = jsonobject.loads(o)
-        #return long(o.size_)
+        return lichdb.lichbd_file_size(lichbd_file)
 
     @replyerror
     def delete_pool(self, req):
@@ -192,20 +169,7 @@ class CephAgent(object):
 
         src_path = self.spath2src_normal(spath)
         dst_path = self.spath2normal(spath)
-
-        shell.call('/opt/mds/lich/libexec/lich --copy %s %s' % (src_path, dst_path))
-
-        #do_create = True
-        #if cmd.skipOnExisting:
-            #image_name, sp_name = spath.split('@')
-            #o = shell.call('rbd --format json snap ls %s' % image_name)
-            #o = jsonobject.loads(o)
-            #for s in o:
-                #if s.name_ == sp_name:
-                    #do_create = False
-
-        #if do_create:
-            #shell.call('rbd snap create %s' % spath)
+        lichbd.lichbd_copy(src_path, dst_path)
 
         rsp = CreateSnapshotRsp()
         rsp.size = self._get_file_size(src_path)
@@ -257,13 +221,8 @@ class CephAgent(object):
         src_path = self.spath2normal(src_path)
         dst_path = os.path.join("/lichbd", dst_path)
 
-        try:
-            shell.call('/opt/mds/lich/libexec/lich --mkdir %s' % (os.path.dirname(dst_path)))
-        except Exception, e:
-            logger.debug("zz2 err: %s" % e)
-            pass
-
-        shell.call('/opt/mds/lich/libexec/lich --copy %s %s' % (src_path, dst_path))
+        lichbd.lichbd_mkdir(os.path.dirname(dst_path))
+        lichbd.lichbd_copy(src_path, dst_path)
 
         rsp = AgentResponse()
         self._set_capacity_to_response(rsp)
@@ -333,8 +292,10 @@ class CephAgent(object):
 
         path = self._normalize_install_path(cmd.installPath)
         size_M = sizeunit.Byte.toMegaByte(cmd.size) + 1
+        size = "%dM" % (size_M)
+        path = "lichbd:%s" (path)
 
-        shell.call('qemu-img create -f raw lichbd:%s --size %s' % (path, size_M))
+        lichbd.lichbd.lichbd_create_raw(path, size)
         #shell.call('rbd create --size %s --image-format 2 %s' % (size_M, path))
 
         rsp = AgentResponse()
@@ -425,7 +386,8 @@ class CephAgent(object):
         path = self._normalize_install_path(cmd.installPath)
 
         path = os.path.join("/lichbd", path)
-        shell.call('/opt/mds/lich/libexec/lich --unlink %s' % path)
+        lichbd.lichbd_unlink(path)
+
         #o = shell.call('rbd snap ls --format json %s' % path)
         #o = jsonobject.loads(o)
         #if len(o) > 0:

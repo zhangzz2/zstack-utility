@@ -3,6 +3,7 @@
 @author: frank
 '''
 import subprocess
+import time
 from zstacklib.utils import log
 
 logcmd = True
@@ -49,3 +50,34 @@ class ShellCmd(object):
 
 def call(cmd, exception=True, workdir=None):
     return ShellCmd(cmd, workdir)(exception)
+
+def __call_shellcmd(cmd, exception=False, workdir=None):
+    shellcmd =  ShellCmd(cmd, workdir)
+    shellcmd(exception)
+    return shellcmd
+
+def call_try(cmd, exception=False, workdir=None, try_num = None):
+    if try_num is None:
+        try_num = 3
+
+    shellcmd = None
+    for i in range(try_num):
+        shellcmd = __call_shellcmd(cmd, False, workdir)
+        if shellcmd.return_code == 0:
+            break
+
+        time.sleep(1)
+
+    return shellcmd
+    #return shellcmd.stdout, shellcmd.stderr, shellcmd.return_code
+
+def raise_exp(shellcmd):
+    err = []
+    err.append('failed to execute shell command: %s' % shellcmd.cmd)
+    err.append('return code: %s' % shellcmd.process.returncode)
+    err.append('stdout: %s' % shellcmd.stdout)
+    err.append('stderr: %s' % shellcmd.stderr)
+    raise ShellError('\n'.join(err))
+
+def call_timeout():
+    pass

@@ -4,6 +4,7 @@ import zstacklib.utils.daemon as daemon
 import zstacklib.utils.http as http
 import zstacklib.utils.log as log
 import zstacklib.utils.shell as shell
+import zstacklib.utils.lichbd as lichbd
 import zstacklib.utils.iptables as iptables
 import zstacklib.utils.jsonobject as jsonobject
 import zstacklib.utils.lock as lock
@@ -89,13 +90,13 @@ class CephAgent(object):
         total = 0
         used = 0
 
-        o = shell.call('lich.cluster --stat')
-        for l in o:
-            if l.startswith("used:"):
-                used = long(l.strip("used:").strip())
-
-            if l.startswith("capacity:"):
-                total = long(l.strip("capacity:").strip())
+        o = lichbd.lichbd_cluster_stat()
+        logger.debug("zz2 o: %s" % o)
+        for l in o.split("\n"):
+            if 'used:' in l:
+                used = long(l.split("used:")[-1])
+            if 'capacity:' in l:
+                total = long(l.split("capacity:")[-1])
 
         logger.debug("zz2 total: %s, used: %s" % (total, used))
 
@@ -113,22 +114,7 @@ class CephAgent(object):
 
         logger.debug("zz2 cmd: %s" % (cmd))
 
-        #o = shell.call('ceph mon_status')
-        #mon_status = jsonobject.loads(o)
-        #fsid = mon_status.monmap.fsid_
-
-        #existing_pools = shell.call('ceph osd lspools')
-        #for pool in cmd.pools:
-            #if pool.predefined and pool.name not in existing_pools:
-                #raise Exception('cannot find pool[%s] in the ceph cluster, you must create it manually' % pool.name)
-            #elif pool.name not in existing_pools:
-                #shell.call('ceph osd pool create %s 100' % pool.name)
-
-        try:
-            shell.call('/opt/mds/lich/libexec/lich --mkdir /lichbd')
-        except Exception, e:
-            logger.debug("zz2 err: %s" % e)
-            pass
+        lichbd.lichbd_mkdir("/lichbd")
 
         rsp = InitRsp()
         rsp.fsid = "96a91e6d-892a-41f4-8fd2-4a18c9002425"
@@ -157,17 +143,8 @@ class CephAgent(object):
 
         shell.call('wget --no-check-certificate -q -O %s %s' % (local_tmp_file, cmd.url))
 
-        try:
-            shell.call('/opt/mds/lich/libexec/lich --mkdir /lichbd')
-        except Exception, e:
-            logger.debug("zz2 err: %s" % e)
-            pass
-
-        try:
-            shell.call('/opt/mds/lich/libexec/lich --mkdir %s' % (os.path.dirname(lichbd_file)))
-        except Exception, e:
-            logger.debug("zz2 err: %s" % e)
-            pass
+        lichbd.lichbd_mkdir("/lichbd")
+        lichbd.lichbd_mkdir(os.path.dirname(lichbd_file))
 
         file_format = shell.call("set -o pipefail; qemu-img info %s | grep 'file format' | cut -d ':' -f 2" % (local_tmp_file))
         file_format = file_format.strip()
@@ -179,35 +156,21 @@ class CephAgent(object):
         if file_format == 'qcow2':
             shell.call('qemu-img convert -f qcow2 -O raw %s %s' % (local_tmp_file, local_tmp_file_raw))
 
-        shell.call('/opt/mds/lich/libexec/lich --copy :%s %s' % (local_tmp_file_raw, lichbd_file))
+        src_path = ":%s" % (local_tmp_file_raw)
+        dst_path = lichbd_file
+        lichbd.lichbd_copy(src_path, dst_path)
 
         @rollbackable
         def _1():
             shell.call('rm -rf %s' % (local_tmp_file))
-            shell.call('/opt/mds/lich/libexec/lich --unlink %s' % (lichbd_file))
+            lichbd.lichbd_unlink(lichbd_file)
+            #shell.call('/opt/mds/lich/libexec/lich --unlink %s' % (lichbd_file))
         _1()
 
 
         shell.call('rm -rf %s' % (local_tmp_file))
 
-        #if file_format == 'qcow2':
-            #conf_path = None
-            #try:
-                #with open('/etc/ceph/ceph.conf', 'r') as fd:
-                    #conf = fd.read()
-                    #conf = '%s\n%s\n' % (conf, 'rbd default format = 2')
-                    #conf_path = linux.write_to_temp_file(conf)
-
-                #shell.call('qemu-img convert -f qcow2 -O rbd rbd:%s/%s rbd:%s/%s:conf=%s' % (pool, tmp_image_name, pool, image_name, conf_path))
-                #shell.call('rbd rm %s/%s' % (pool, tmp_image_name))
-            #finally:
-                #if conf_path:
-                    #os.remove(conf_path)
-        #else:
-            #shell.call('rbd mv %s/%s %s/%s' % (pool, tmp_image_name, pool, image_name))
-
-        size = shell.call("/opt/mds/lich/libexec/lich --stat %s|grep Size|awk '{print $2}'" % (lichbd_file))
-        size = size.strip()
+        size = lichbd.lichbd_file_size(lichbd_file)
 
         rsp = DownloadRsp()
         rsp.size = size
@@ -223,7 +186,7 @@ class CephAgent(object):
         cmd = jsonobject.loads(req[http.REQUEST_BODY])
         pool, image_name = self._parse_install_path(cmd.installPath)
         lichbd_file = os.path.join("/lichbd", pool, image_name)
-        shell.call('/opt/mds/lich/libexec/lich --unlink %s' % (lichbd_file))
+        lichdb.lichbd_unlink(lichbd_file)
 
         rsp = AgentResponse()
         self._set_capacity_to_response(rsp)
