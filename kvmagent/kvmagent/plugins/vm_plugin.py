@@ -270,7 +270,7 @@ class VirtioCeph(object):
         disk = etree.Element('disk', {'type':'network', 'device':'disk'})
         source = e(disk, 'source', None, {'name': self.volume.installPath.lstrip('ceph:').lstrip('//'), 'protocol':'lichbd'})
         e(disk, 'target', None, {'dev':'vd%s' % self.dev_letter, 'bus':'virtio'})
-        e(disk, 'driver', None, {'cache':'none', 'name':'qemu', 'type':'raw'})
+        e(disk, 'driver', None, {'cache':'none', 'name':'qemu', 'type':'raw', 'io':'native'})
 
         #source = e(disk, 'source', None, {'name': self.volume.installPath.lstrip('ceph:').lstrip('//'), 'protocol':'rbd'})
         #auth = e(disk, 'auth', attrib={'username': 'zstack'})
@@ -1150,8 +1150,8 @@ class Vm(object):
         def make_os():
             root = elements['root']
             os = e(root, 'os')
-            #e(os, 'type', 'hvm', {'arch':'x86_64', 'machine':'pc'})
-            e(os, 'type', 'hvm', {'machine':'pc'})
+            e(os, 'type', 'hvm', {'arch':'x86_64', 'machine':'pc'})
+            #e(os, 'type', 'hvm', {'machine':'pc'})
             e(os, 'boot', None, {'dev':cmd.bootDev})
  
         def make_commandline():

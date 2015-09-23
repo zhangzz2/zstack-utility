@@ -119,7 +119,7 @@ class CephAgent(object):
 
     def _get_file_size(self, path):
         lichbd_file = os.path.join("/lichbd", path)
-        return lichdb.lichbd_file_size(lichbd_file)
+        return lichbd.lichbd_file_size(lichbd_file)
 
     @replyerror
     def delete_pool(self, req):
@@ -293,9 +293,9 @@ class CephAgent(object):
         path = self._normalize_install_path(cmd.installPath)
         size_M = sizeunit.Byte.toMegaByte(cmd.size) + 1
         size = "%dM" % (size_M)
-        path = "lichbd:%s" (path)
+        path = "lichbd:%s" % (path)
 
-        lichbd.lichbd.lichbd_create_raw(path, size)
+        lichbd.lichbd_create_raw(path, size)
         #shell.call('rbd create --size %s --image-format 2 %s' % (size_M, path))
 
         rsp = AgentResponse()
