@@ -12,7 +12,7 @@
 
         <exec executable="git" dir="${zstackdashboard.source}" failonerror="true">
             <arg value="checkout" />
-            <arg value="master" />
+            <arg value="lichbd" />
         </exec>
 
         <exec executable="git" dir="${zstackdashboard.source}" failonerror="true">

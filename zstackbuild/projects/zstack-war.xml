@@ -7,7 +7,8 @@
 
         <exec executable="git" dir="${zstack.source}" failonerror="true">
             <arg value="checkout" />
-            <arg value="master" />
+            <arg value="lichbd" />
+            <!--<arg value="master" />-->
         </exec>
 
         <exec executable="git" dir="${zstack.source}" failonerror="true">
