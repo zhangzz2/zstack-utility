@@ -233,11 +233,7 @@ class IsoCeph(object):
 
     def to_xmlobject(self):
         disk = etree.Element('disk', {'type':'network', 'device':'cdrom'})
-        source = e(disk, 'source', None, {'name': self.iso.path.lstrip('ceph:').lstrip('//'), 'protocol':'rbd'})
-        auth = e(disk, 'auth', attrib={'username': 'zstack'})
-        e(auth, 'secret', attrib={'type':'ceph', 'uuid': self.iso.secretUuid})
-        for minfo in self.iso.monInfo:
-            e(source, 'host', None, {'name': minfo.hostname, 'port':str(minfo.port)})
+        source = e(disk, 'source', None, {'name': self.iso.path.lstrip('ceph:').lstrip('//').split("@")[0], 'protocol':'lichbd'})
         e(disk, 'target', None, {'dev':'hdc', 'bus':'ide'})
         e(disk, 'readonly', None)
         return disk

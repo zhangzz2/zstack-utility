@@ -149,26 +149,30 @@ class CephAgent(object):
         file_format = shell.call("set -o pipefail; qemu-img info %s | grep 'file format' | cut -d ':' -f 2" % (local_tmp_file))
         file_format = file_format.strip()
 
-        if file_format not in ['qcow2', 'raw']:
-            raise Exception('unknown image format: %s' % file_format)
+        #if file_format not in ['qcow2', 'raw']:
+            #raise Exception('unknown image format: %s' % file_format)
 
         #need to convert2raw
         if file_format == 'qcow2':
             shell.call('qemu-img convert -f qcow2 -O raw %s %s' % (local_tmp_file, local_tmp_file_raw))
+            src_path = ":%s" % (local_tmp_file_raw)
+        else:
+            src_path = ":%s" % (local_tmp_file)
 
-        src_path = ":%s" % (local_tmp_file_raw)
         dst_path = lichbd_file
         lichbd.lichbd_copy(src_path, dst_path)
 
         @rollbackable
         def _1():
             shell.call('rm -rf %s' % (local_tmp_file))
+            shell.call('rm -rf %s' % (local_tmp_file_raw))
             lichbd.lichbd_unlink(lichbd_file)
             #shell.call('/opt/mds/lich/libexec/lich --unlink %s' % (lichbd_file))
         _1()
 
 
         shell.call('rm -rf %s' % (local_tmp_file))
+        shell.call('rm -rf %s' % (local_tmp_file_raw))
 
         size = lichbd.lichbd_file_size(lichbd_file)
 

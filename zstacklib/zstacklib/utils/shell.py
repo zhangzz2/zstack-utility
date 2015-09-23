@@ -58,7 +58,7 @@ def __call_shellcmd(cmd, exception=False, workdir=None):
 
 def call_try(cmd, exception=False, workdir=None, try_num = None):
     if try_num is None:
-        try_num = 3
+        try_num = 10
 
     shellcmd = None
     for i in range(try_num):

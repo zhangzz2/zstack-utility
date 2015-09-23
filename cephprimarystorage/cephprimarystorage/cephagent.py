@@ -144,7 +144,11 @@ class CephAgent(object):
         src_path = self._normalize_install_path(cmd.srcPath)
         dst_path = self._normalize_install_path(cmd.dstPath)
 
-        shell.call('rbd cp %s %s' % (src_path, dst_path))
+        #shell.call('rbd cp %s %s' % (src_path, dst_path))
+
+        src_path = os.path.join("/lichbd", src_path)
+        dst_path = os.path.join("/lichbd", dst_path)
+        lichbd.lichbd_copy(src_path, dst_path)
 
         rsp = CpRsp()
         rsp.size = self._get_file_size(dst_path)
