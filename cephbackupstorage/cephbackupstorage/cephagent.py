@@ -112,9 +112,10 @@ class CephAgent(object):
     def init(self, req):
         cmd = jsonobject.loads(req[http.REQUEST_BODY])
 
-        logger.debug("zz2 cmd: %s" % (cmd))
-
         lichbd.lichbd_mkdir("/lichbd")
+
+        self.tmp_dir = "/opt/zstack/data"
+        shell.call('mkdir -p %s' % (self.tmp_dir))
 
         rsp = InitRsp()
         rsp.fsid = "96a91e6d-892a-41f4-8fd2-4a18c9002425"
@@ -130,15 +131,14 @@ class CephAgent(object):
     def download(self, req):
         cmd = jsonobject.loads(req[http.REQUEST_BODY])
 
-        tmp_dir = "/opt/mds/data"
 
         pool, image_name = self._parse_install_path(cmd.installPath)
         tmp_image_name = 'tmp-%s' % image_name
 
         #shell.call('set -o pipefail; wget --no-check-certificate -q -O - %s | rbd import --image-format 2 - %s/%s' % (cmd.url, pool, tmp_image_name))
 
-        local_tmp_file = os.path.join(tmp_dir, tmp_image_name)
-        local_tmp_file_raw = os.path.join(tmp_dir, tmp_image_name + 'raw')
+        local_tmp_file = os.path.join(self.tmp_dir, tmp_image_name)
+        local_tmp_file_raw = os.path.join(self.tmp_dir, tmp_image_name + 'raw')
         lichbd_file = os.path.join("/lichbd", pool, image_name)
 
         shell.call('wget --no-check-certificate -q -O %s %s' % (local_tmp_file, cmd.url))

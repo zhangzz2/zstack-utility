@@ -9,6 +9,7 @@ from zstacklib.utils import xmlobject
 from zstacklib.utils import http
 from zstacklib.utils import log
 from zstacklib.utils import shell
+import zstacklib.utils.lichbd as lichbd
 from zstacklib.utils import sizeunit
 from zstacklib.utils import uuidhelper
 from zstacklib.utils import linux
@@ -232,8 +233,22 @@ class IsoCeph(object):
         self.iso = None
 
     def to_xmlobject(self):
-        disk = etree.Element('disk', {'type':'network', 'device':'cdrom'})
-        source = e(disk, 'source', None, {'name': self.iso.path.lstrip('ceph:').lstrip('//').split("@")[0], 'protocol':'lichbd'})
+        #disk = etree.Element('disk', {'type':'network', 'device':'cdrom'})
+        #source = e(disk, 'source', None, {'name': self.iso.path.lstrip('ceph:').lstrip('//').split("@")[0], 'protocol':'lichbd'})
+        #e(disk, 'target', None, {'dev':'hdc', 'bus':'ide'})
+        #e(disk, 'readonly', None)
+
+        path = self.iso.path.lstrip('ceph:').lstrip('//').split("@")[0]
+        path_lichbd = os.path.join("/lichbd", path)
+        path_local = os.path.join("/opt/zstack/data/", path_lichbd.split("/")[-1])
+
+        shell.call("rm -rf %s" % (path_local))
+        lichbd.lichbd_copy(path_lichbd, ":%s"%(path_local))
+        shell.call("chmod 644 %s" % (path_local))
+
+        disk = etree.Element('disk', {'type':'file', 'device':'cdrom'})
+        e(disk, 'driver', None, {'name':'qemu', 'type':'raw'})
+        e(disk, 'source', None, {'file': path_local})
         e(disk, 'target', None, {'dev':'hdc', 'bus':'ide'})
         e(disk, 'readonly', None)
         return disk

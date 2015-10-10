@@ -125,7 +125,9 @@ class CephAgent(object):
     def delete_pool(self, req):
         cmd = jsonobject.loads(req[http.REQUEST_BODY])
         for p in cmd.poolNames:
-            shell.call('ceph osd pool delete %s %s --yes-i-really-really-mean-it' % (p, p))
+            #shell.call('ceph osd pool delete %s %s --yes-i-really-really-mean-it' % (p, p))
+            p = os.path.join("/lichbd", p)
+            lichbd.lichbd_unlink(p)
         return jsonobject.dumps(AgentResponse())
 
     @replyerror
