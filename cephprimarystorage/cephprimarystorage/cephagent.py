@@ -132,10 +132,18 @@ class CephAgent(object):
 
     @replyerror
     def rollback_snapshot(self, req):
+        logger.debug("============ rollback_snapshot ==============\n")
         cmd = jsonobject.loads(req[http.REQUEST_BODY])
         spath = self._normalize_install_path(cmd.snapshotPath)
 
-        shell.call('rbd snap rollback %s' % spath)
+        src_path = self.spath2src_normal(spath)
+        snap_path = self.spath2normal(spath)
+        logger.debug("--------- src_path: %s\n" % (src_path))
+        logger.debug("--------- snap_path: %s\n" % (snap_path))
+
+        #shell.call('rbd snap rollback %s' % spath)
+        shell.call('/opt/mds/lich/libexec/lich.snapshot --rollback %s@%s' % (src_path, snap_path))
+
         rsp = AgentResponse()
         self._set_capacity_to_response(rsp)
         return jsonobject.dumps(rsp)
@@ -168,6 +176,7 @@ class CephAgent(object):
         
     @replyerror
     def create_snapshot(self, req):
+        logger.debug("============ create_snapshot ==============\n")
         cmd = jsonobject.loads(req[http.REQUEST_BODY])
         spath = self._normalize_install_path(cmd.snapshotPath)
 
@@ -175,7 +184,11 @@ class CephAgent(object):
 
         src_path = self.spath2src_normal(spath)
         dst_path = self.spath2normal(spath)
-        lichbd.lichbd_copy(src_path, dst_path)
+        logger.debug("--------- src_path: %s\n" % (src_path))
+        logger.debug("--------- dst_path: %s\n" % (dst_path))
+
+        #lichbd.lichbd_copy(src_path, dst_path)
+        shell.call('/opt/mds/lich/libexec/lich.snapshot --create %s@%s' % (src_path, dst_path))
 
         rsp = CreateSnapshotRsp()
         rsp.size = self._get_file_size(src_path)
@@ -184,11 +197,17 @@ class CephAgent(object):
 
     @replyerror
     def delete_snapshot(self, req):
+        logger.debug("============ delete_snapshot ==============\n")
         cmd = jsonobject.loads(req[http.REQUEST_BODY])
 
         spath = self._normalize_install_path(cmd.snapshotPath)
+        src_path = self.spath2src_normal(spath)
+        dst_path = self.spath2normal(spath)
+        logger.debug("--------- src_path: %s\n" % (src_path))
+        logger.debug("--------- dst_path: %s\n" % (dst_path))
 
-        shell.call('rbd snap rm %s' % spath)
+        #shell.call('rbd snap rm %s' % spath)
+        shell.call('/opt/mds/lich/libexec/lich.snapshot --remove %s@%s' % (src_path, dst_path))
 
         rsp = AgentResponse()
         self._set_capacity_to_response(rsp)
@@ -196,27 +215,30 @@ class CephAgent(object):
 
     @replyerror
     def unprotect_snapshot(self, req):
+        logger.debug("============ unprotect_snapshot ==============\n")
         cmd = jsonobject.loads(req[http.REQUEST_BODY])
         spath = self._normalize_install_path(cmd.snapshotPath)
 
-        shell.call('rbd snap unprotect %s' % spath)
+        #shell.call('rbd snap unprotect %s' % spath)
 
         return jsonobject.dumps(AgentResponse())
 
     @replyerror
     def protect_snapshot(self, req):
+        logger.debug("============ protect_snapshot ==============\n")
         cmd = jsonobject.loads(req[http.REQUEST_BODY])
         spath = self._normalize_install_path(cmd.snapshotPath)
 
-        shell.call('rbd snap protect %s' % spath, exception=not cmd.ignoreError)
+        #shell.call('rbd snap protect %s' % spath, exception=not cmd.ignoreError)
 
         rsp = AgentResponse()
         return jsonobject.dumps(rsp)
 
     @replyerror
     def clone(self, req):
+        logger.debug("============ clone ==============\n")
         cmd = jsonobject.loads(req[http.REQUEST_BODY])
-        src_path = self._normalize_install_path(cmd.srcPath)
+        spath = self._normalize_install_path(cmd.srcPath)
         dst_path = self._normalize_install_path(cmd.dstPath)
 
         ##rbd clone bak-t-95036217321343c2a8d64d32e085211e/382b3757a54045e5b7dbcfcdcfb07200@382b3757a54045e5b7dbcfcdcfb07200 pri-v-r-2a3fbde17e87421d81269046594c34fc/335e4182706d4883b704b45dd902a673
@@ -224,11 +246,17 @@ class CephAgent(object):
 
         #todo set snap to null
 
-        src_path = self.spath2normal(src_path)
+        logger.debug("--------- spath: %s\n" % (spath))
+        src_path = self.spath2src_normal(spath)
+        snap_path = self.spath2normal(spath)
         dst_path = os.path.join("/lichbd", dst_path)
+        logger.debug("--------- src_path: %s\n" % (src_path))
+        logger.debug("--------- snap_path: %s\n" % (snap_path))
+        logger.debug("--------- dst_path: %s\n" % (dst_path))
 
         lichbd.lichbd_mkdir(os.path.dirname(dst_path))
-        lichbd.lichbd_copy(src_path, dst_path)
+        #lichbd.lichbd_copy(src_path, dst_path)
+        shell.call('/opt/mds/lich/libexec/lich.snapshot --clone %s@%s %s' % (src_path, snap_path, dst_path))
 
         rsp = AgentResponse()
         self._set_capacity_to_response(rsp)
