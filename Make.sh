@@ -16,7 +16,7 @@ zstack-ctl save_config
 #rm -rf /usr/local/zstack
 #bash ${home}/install-zstack.sh -a -f ${home}/zstack-utility/zstackbuild/target/zstack-all-in-one-0.9.0.tgz
 
-bash ${home}/install-zstack.sh -u -f ${home}/zstack-utility/zstackbuild/target/zstack-all-in-one-0.9.0.tgz
+bash ${home}/zstack-utility/install-zstack.sh -u -f ${home}/zstack-utility/zstackbuild/target/zstack-all-in-one-0.9.0.tgz
 
 /etc/init.d/zstack-server start
 /etc/init.d/zstack-dashboard start
