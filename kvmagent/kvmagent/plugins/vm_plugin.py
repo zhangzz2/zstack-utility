@@ -1173,14 +1173,18 @@ class Vm(object):
             commandline = e(root, 'qemu:commandline')
             #e(os, 'type', 'hvm', {'arch':'x86_64', 'machine':'pc'})
             for i in range(len(volumes)):
+                id = i
+                if (i >= 2):
+                    # letter 'c' is reserved for cdrom
+                    id = i + 1
                 e(commandline, 'qemu:arg', None, {'value': '-set'})
-                e(commandline, 'qemu:arg', None, {'value': 'device.virtio-disk%d.scsi=off' % (i)})
+                e(commandline, 'qemu:arg', None, {'value': 'device.virtio-disk%d.scsi=off' % (id)})
 
                 e(commandline, 'qemu:arg', None, {'value': '-set'})
-                e(commandline, 'qemu:arg', None, {'value': 'device.virtio-disk%d.config-wce=off' % (i)})
+                e(commandline, 'qemu:arg', None, {'value': 'device.virtio-disk%d.config-wce=off' % (id)})
 
                 e(commandline, 'qemu:arg', None, {'value': '-set'})
-                e(commandline, 'qemu:arg', None, {'value': 'device.virtio-disk%d.x-data-plane=on' %(i)})
+                e(commandline, 'qemu:arg', None, {'value': 'device.virtio-disk%d.x-data-plane=on' %(id)})
 
 
         def make_features():
