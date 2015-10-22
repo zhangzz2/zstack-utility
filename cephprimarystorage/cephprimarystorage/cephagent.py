@@ -138,8 +138,6 @@ class CephAgent(object):
 
         src_path = self.spath2src_normal(spath)
         snap_path = self.spath2normal(spath)
-        logger.debug("--------- src_path: %s\n" % (src_path))
-        logger.debug("--------- snap_path: %s\n" % (snap_path))
 
         #shell.call('rbd snap rollback %s' % spath)
         shell.call('/opt/mds/lich/libexec/lich.snapshot --rollback %s@%s' % (src_path, snap_path))
@@ -184,8 +182,6 @@ class CephAgent(object):
 
         src_path = self.spath2src_normal(spath)
         dst_path = self.spath2normal(spath)
-        logger.debug("--------- src_path: %s\n" % (src_path))
-        logger.debug("--------- dst_path: %s\n" % (dst_path))
 
         #lichbd.lichbd_copy(src_path, dst_path)
         shell.call('/opt/mds/lich/libexec/lich.snapshot --create %s@%s' % (src_path, dst_path))
@@ -203,8 +199,6 @@ class CephAgent(object):
         spath = self._normalize_install_path(cmd.snapshotPath)
         src_path = self.spath2src_normal(spath)
         dst_path = self.spath2normal(spath)
-        logger.debug("--------- src_path: %s\n" % (src_path))
-        logger.debug("--------- dst_path: %s\n" % (dst_path))
 
         #shell.call('rbd snap rm %s' % spath)
         shell.call('/opt/mds/lich/libexec/lich.snapshot --remove %s@%s' % (src_path, dst_path))
@@ -246,13 +240,9 @@ class CephAgent(object):
 
         #todo set snap to null
 
-        logger.debug("--------- spath: %s\n" % (spath))
         src_path = self.spath2src_normal(spath)
         snap_path = self.spath2normal(spath)
         dst_path = os.path.join("/lichbd", dst_path)
-        logger.debug("--------- src_path: %s\n" % (src_path))
-        logger.debug("--------- snap_path: %s\n" % (snap_path))
-        logger.debug("--------- dst_path: %s\n" % (dst_path))
 
         lichbd.lichbd_mkdir(os.path.dirname(dst_path))
         #lichbd.lichbd_copy(src_path, dst_path)
