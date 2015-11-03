@@ -241,7 +241,7 @@ class CephAgent(object):
         #todo set snap to null
 
         src_path = self.spath2src_normal(spath)
-        snap_path = self.spath2normal(spath)
+        snap_path = 'template'
         dst_path = os.path.join("/lichbd", dst_path)
 
         lichbd.lichbd_mkdir(os.path.dirname(dst_path))
