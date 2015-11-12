@@ -242,6 +242,8 @@ class IsoCeph(object):
         path_lichbd = os.path.join("/lichbd", path)
         path_local = os.path.join("/opt/zstack/data/", path_lichbd.split("/")[-1])
 
+        if not os.path.exists("/opt/zstack/data"):
+            shell.call('mkdir -p %s' % ("/opt/zstack/data"))
         shell.call("rm -rf %s" % (path_local))
         lichbd.lichbd_copy(path_lichbd, ":%s"%(path_local))
         shell.call("chmod 644 %s" % (path_local))
