@@ -181,7 +181,8 @@ class CephAgent(object):
         logger.debug("zz2, spath: %s, cmd: %s\n" % (spath, cmd))
 
         src_path = self.spath2src_normal(spath)
-        dst_path = self.spath2normal(spath)
+        dst_path = 'template'
+        #dst_path = self.spath2normal(spath)
 
         #lichbd.lichbd_copy(src_path, dst_path)
         shell.call('/opt/mds/lich/libexec/lich.snapshot --create %s@%s' % (src_path, dst_path))
@@ -198,7 +199,8 @@ class CephAgent(object):
 
         spath = self._normalize_install_path(cmd.snapshotPath)
         src_path = self.spath2src_normal(spath)
-        dst_path = self.spath2normal(spath)
+        dst_path = 'template'
+        #dst_path = self.spath2normal(spath)
 
         #shell.call('rbd snap rm %s' % spath)
         shell.call('/opt/mds/lich/libexec/lich.snapshot --remove %s@%s' % (src_path, dst_path))
