@@ -890,6 +890,25 @@ class Vm(object):
         self.domain_xmlobject.os.replace_node('boot', boot_dev)
         self.domain_xml = self.domain_xmlobject.dump()
 
+        """
+          del make_commandline
+        """
+        commandlines = []
+        root = etree.fromstring(self.domain_xml)
+        del_parent_nodes = root.findall('commandline')
+        for parent_node in del_parent_nodes:
+            children = parent_node.findall('arg')
+            for child in children:
+                commandlines.append(child.attrib)
+                parent_node.remove(child)
+            root.remove(parent_node)
+
+        root.set('xmlns:qemu', 'http://libvirt.org/schemas/domain/qemu/1.0')
+        commandline = e(root, 'qemu:commandline')
+        for item in commandlines:
+            e(commandline, 'qemu:arg', None, item)
+
+        self.domain_xml = etree.tostring(root)
         self.start(cmd.timeout)
 
     def start(self, timeout=60):
@@ -1787,6 +1806,26 @@ class Vm(object):
             for boot_dev in cmd.bootDev:
                 e(os, 'boot', None, {'dev': boot_dev})
 
+        def make_commandline():
+            volumes = [cmd.rootVolume]
+            volumes.extend(cmd.dataVolumes)
+
+            root = elements['root']
+            commandline = e(root, 'qemu:commandline')
+            #e(os, 'type', 'hvm', {'arch':'x86_64', 'machine':'pc'})
+            for i in range(len(volumes)):
+                id = i
+                if (i >= 2):   # letter 'c' is reserved for cdrom
+                    id = i + 1
+
+                e(commandline, 'qemu:arg', None, {'value': '-set'})
+                e(commandline, 'qemu:arg', None, {'value': 'device.virtio-disk%d.scsi=off' % (id)})
+
+                e(commandline, 'qemu:arg', None, {'value': '-set'})
+                e(commandline, 'qemu:arg', None, {'value': 'device.virtio-disk%d.config-wce=off' % (id)})
+
+                e(commandline, 'qemu:arg', None, {'value': '-set'})
+                e(commandline, 'qemu:arg', None, {'value': 'device.virtio-disk%d.x-data-plane=on' %(id)})
 
         def make_features():
             root = elements['root']
@@ -2088,6 +2127,7 @@ class Vm(object):
         make_balloon_memory()
         make_console()
         make_sec_label()
+        make_commandline()
 
         root = elements['root']
         xml = etree.tostring(root)

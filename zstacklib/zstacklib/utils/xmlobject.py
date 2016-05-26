@@ -108,6 +108,8 @@ class XmlObject(object):
             if not found_child and hasattr(obj, 'text_'):
                 xmlstr.append(getattr(obj, 'text_'))
             xmlstr.append('</%s>' % obj.get_tag())
+            for item in range(len(xmlstr)):
+                xmlstr[item] = re.sub(r'\{.*\}', '', xmlstr[item])
             return ''.join(xmlstr)
         
         return _dump(self)
