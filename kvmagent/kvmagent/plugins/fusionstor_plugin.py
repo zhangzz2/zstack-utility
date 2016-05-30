@@ -38,6 +38,10 @@ class FusionstorPlugin(kvmagent.KvmAgent):
         else:
             raise shell.ShellError('Do not supprot protocols, only supprot lichbd, sheepdog and nbd')
 
+        o = shell.call('lich.node --stat 2>/dev/null')
+        if 'running' not in o:
+            raise shell.ShellError('the lichd process of this node is not running, Please check the lichd service')
+
         return jsonobject.dumps(kvmagent.AgentResponse())
 
     def start(self):
