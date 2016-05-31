@@ -49,7 +49,9 @@ def get_http_server():
 def get_qemu_path():
     global _qemu_path
     if not _qemu_path:
-        if os.path.exists('/usr/libexec/qemu-kvm'):
+        if os.path.exists('/opt/fusionstack/qemu/bin/qemu-system-x86_64'):
+            _qemu_path = '/opt/fusionstack/qemu/bin/qemu-system-x86_64'
+        elif os.path.exists('/usr/libexec/qemu-kvm'):
             _qemu_path = '/usr/libexec/qemu-kvm'
         elif os.path.exists('/bin/qemu-kvm'):
             _qemu_path = '/bin/qemu-kvm'

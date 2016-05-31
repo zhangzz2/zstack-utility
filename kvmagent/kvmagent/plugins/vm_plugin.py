@@ -553,7 +553,7 @@ class IsoFusionstor(object):
             path = '%s:%s.%s/0' % (iqn, pool, image)
             protocol = 'iscsi'
         elif protocol == 'sheepdog' or protocol == 'nbd':
-            lichbd.makesure_qemu_with_lichbd()
+            pass
         else:
             raise shell.ShellError('Do not supprot protocols, only supprot lichbd, sheepdog and nbd')
 
@@ -580,7 +580,7 @@ class IdeFusionstor(object):
             lichbd.makesure_qemu_with_lichbd()
             lichbd.makesure_qemu_img_with_lichbd()
         elif protocol == 'sheepdog' or protocol == 'nbd':
-            lichbd.makesure_qemu_with_lichbd()
+            pass
         else:
             raise shell.ShellError('Do not supprot protocols, only supprot lichbd, sheepdog and nbd')
 
@@ -608,7 +608,7 @@ class VirtioFusionstor(object):
             lichbd.makesure_qemu_with_lichbd()
             lichbd.makesure_qemu_img_with_lichbd()
         elif protocol == 'sheepdog' or protocol == 'nbd':
-            lichbd.makesure_qemu_with_lichbd()
+            pass
         else:
             raise shell.ShellError('Do not supprot protocols, only supprot lichbd, sheepdog and nbd')
 
