@@ -17,7 +17,7 @@ class FusionStor():
     PROTOCOL = None
     def __init__(self):
         #protocol: lichbd, sheepdog and nbd
-        self.PROTOCOL = 'sheepdog'
+        self.PROTOCOL = 'nbd'
 
     def set_protocol(self, protocol):
         self.PROTOCOL = protocol
